@@ -12,20 +12,24 @@ char input[] = "Input-Day2.txt";
 
 int main(int argc, char *argv[]) {
 
-    //TODO add an exception handler here
-	FILE *fileptr = fopen(input, "r");
-    
+    FILE *fileptr;
+	if ((fileptr = fopen(input, "r")) == NULL) {
+        printf("No file found");
+        exit(1);
+    }
+
 	char direction[8];
-	int amount, depth, horiz;
-    amount = depth = horiz = 0;
+	int amount, depth, horiz, aim;
+    amount = depth = horiz = aim = 0;
 	
 	while (fscanf(fileptr, "%s %d\n", &direction, &amount) != EOF) {
         if (strcmp(direction, "forward") == 0){
             horiz += amount;
+            depth += amount * aim;
         } else if (strcmp(direction, "down") == 0) {
-            depth += amount;
+            aim += amount;
         } else {
-            depth -= amount;
+            aim -= amount;
         }
     }
 	printf("%d  %d  %d\n", horiz, depth, horiz * depth);
