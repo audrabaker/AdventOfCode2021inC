@@ -5,7 +5,7 @@
 #include <sys/queue.h>
 #include <stdbool.h>
 
-char input[] = "Test-Day4.txt";
+char input[] = "Input-Day4.txt";
 FILE *fileptr;
 
 struct numberToDraw {
@@ -106,11 +106,17 @@ void parseTheBoards() {
 // For debugging the boards if needed. 
 void debugBoards() {
     struct board *tmp = malloc(sizeof(struct board));
-
+    char ESC=27;
     LIST_FOREACH(tmp, &boards, nextBoard) {
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++){
-                printf("%2d ", tmp->grid[i][j]);
+                if (tmp->called[i][j]) {
+                    printf("%c[1m",ESC);  /*- turn on bold */
+                    printf("%2d ", tmp->grid[i][j]);
+                    printf("%c[0m",ESC); /* turn off bold */
+                } else {
+                    printf("%2d ", tmp->grid[i][j]);
+                }
                 if (j == 4) {
                     printf("\n");
                 }
@@ -144,69 +150,76 @@ int calcUnmarkedNumbers(struct board *board) {
 
 // Check for winners by looking at each board horizontally,
 // vertically and then diagonally (criss-cross).
-// Once a winning board is found, we call calcUnmarkedNumbers
-// to figure out part of the final score.
-int checkForWinner() {
-    struct board *tmpBoard = malloc(sizeof(struct board));
-    int winningSum = 0;
+// Once a winning board is found, we remove the board from
+// the list of boards.
+int checkForWinner(struct board *tmpBoard) {
     // check horiz
-    LIST_FOREACH(tmpBoard, &boards, nextBoard) {
+
         for (int row = 0; row < 5; row++){
             int amIaWinner = 0;
             for (int column = 0; column < 5; column++) {
                 if (tmpBoard->called[row][column] == true){
                     amIaWinner++;
-                    winningSum += tmpBoard->grid[row][column];
                 }
             }
             if (amIaWinner == 5){
-                printf("I won horiz!\n");
-                return calcUnmarkedNumbers(tmpBoard);
+                if (totalNumOfBoards != 1) {
+                    LIST_REMOVE(tmpBoard, nextBoard);
+                    totalNumOfBoards--;
+                    return 0;
+                } else if (totalNumOfBoards == 1) {
+                    return calcUnmarkedNumbers(tmpBoard);
+                }
             }
         }
-        winningSum = 0;
-    }
+    
 
     // check vertical
-    winningSum = 0;
-    LIST_FOREACH(tmpBoard, &boards, nextBoard) {
+   
+
         for (int column = 0; column < 5; column++){
             int amIaWinner = 0;
             for (int row = 0; row < 5; row++) {
                 if (tmpBoard->called[row][column] == true){
                     amIaWinner++;
-                    winningSum += tmpBoard->grid[row][column];
                 } 
                 if (amIaWinner == 5){
-                    printf("I won vertical!\n");
-                    return calcUnmarkedNumbers(tmpBoard);
+                    if (totalNumOfBoards != 1) {
+                        LIST_REMOVE(tmpBoard, nextBoard);
+                        totalNumOfBoards--;
+                        return 0;
+                    } else if (totalNumOfBoards == 1) {
+                        return calcUnmarkedNumbers(tmpBoard);
+                    }
                 }
             }
         }
-        winningSum = 0;
-    }
+    
 
+    /*
     // check cris-cross
-    int winningSumDown = 0;
-    int winningSumUp = 0;
-    LIST_FOREACH(tmpBoard, &boards, nextBoard) {
+
         int amIaWinnerDiagDown = 0;
         int amIaWinnerDiagUp = 0;
         for (int i = 0; i < 5; i++){
             if (tmpBoard->called[i][i] == true){
                     amIaWinnerDiagDown++;
-                    winningSumDown += tmpBoard->grid[i][i];
             }
             if (tmpBoard->called[i][5-i]) {
                     amIaWinnerDiagUp++;
-                    winningSumUp += tmpBoard->grid[i][5-i];
             }   
             if (amIaWinnerDiagDown == 5 || amIaWinnerDiagUp == 5) {
-                return calcUnmarkedNumbers(tmpBoard);
+                if (totalNumOfBoards != 1) {
+                    LIST_REMOVE(tmpBoard, nextBoard);
+                    totalNumOfBoards--;
+                    return 0;
+                } else if (totalNumOfBoards == 1) {
+                    return calcUnmarkedNumbers(tmpBoard);
+                }
             }
         }
-    }
-
+        */
+    
     return 0;
 }
 
@@ -236,13 +249,17 @@ void playBingo() {
         }
         // after the first 5 numbers are drawn, check for a winner
         if (iteration >= 5) {
-            int winningSum = 0;
-            if ((winningSum = checkForWinner()) > 0) {
-                printf("winning number is: %d  winning sum is %d\n",currentNumber->number, winningSum);
-                printf("Final score is: %d\n", currentNumber->number * winningSum);
-                return;
+            struct board *tmp = malloc(sizeof(struct board));
+            LIST_FOREACH(tmp, &boards, nextBoard) {
+                int winningSum = checkForWinner(tmp);
+                if (winningSum != 0) {
+                    printf("losing sum is: %d  Last number called is: %d\n", winningSum, currentNumber->number);
+                    printf("total score for last board to win is: %d\n", winningSum * currentNumber->number);
+                    return;
+                }
             }
         }
+
     }
 
 }
@@ -261,8 +278,9 @@ int main(int argc, char *argv[]) {
     parseFileInput();
     
     // play bingo - mark drawn numbers on boards 
-    // once a winner is found, calc score
-    // add up unmarked numbers from winning board
+    // once a winner is found, remove the board from the list.
+    // Once there is only one remaining board in the list,
+    // add up unmarked numbers from that board
     // multiply unmarked numbers sum with the last number drawn.
     playBingo();
 
